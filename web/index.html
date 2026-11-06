@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpringBoot Agent · by Vetrivel Balakrishnan</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 64'%3E%3Cpath d='M22 12C22 2 34 0 40 4C38 14 28 16 22 12Z' fill='%232E9E5B'/%3E%3Cpath d='M22 12V16L10 22L34 30L10 38L34 46L10 54L22 58V62' fill='none' stroke='%2310281F' stroke-width='5' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pine:#10281F; --pine-2:#1A3A2D; --pine-3:#2A5240;
+  --mist:#EEF3EA; --paper:#FFFFFF; --line:#D5E0CF;
+  --ink:#16261E; --ink-soft:#56685D;
+  --leaf:#2E9E5B; --leaf-soft:#DDF1E4;
+  --marigold:#F2A900; --marigold-soft:#FFF3CF;
+  --rust:#C8442A; --rust-soft:#FBE4DD;
+  --code:#0C1F17; --code-ink:#CFE6D2;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Consolas,'Courier New',monospace;
+}
+*{box-sizing:border-box}
+html,body,#root{height:100%;margin:0}
+body{font-family:var(--body);color:var(--ink);background:var(--mist);font-size:15px;line-height:1.55}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--marigold);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:292px 1fr;height:100%}
+
+/* ---------- sidebar ---------- */
+.side{background:var(--pine);color:#D6E6D0;display:flex;flex-direction:column;min-height:0}
+.brand{display:flex;gap:14px;align-items:center;padding:22px 20px 18px;border-bottom:1px solid var(--pine-2)}
+.brand h1{font-family:var(--display);font-weight:800;font-size:22px;line-height:1.05;margin:0;color:#fff;letter-spacing:-.01em}
+.brand small{display:block;margin-top:5px;font-size:12.5px;color:#9FBFA9}
+.side-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 8px}
+.side-head h2{margin:0;font-family:var(--display);font-size:15px;font-weight:700;color:#fff}
+.icon-btn{background:none;border:1px solid var(--pine-3);color:#D6E6D0;border-radius:8px;padding:4px 10px;font-size:12.5px;transition:background .2s}
+.icon-btn:hover{background:var(--pine-2)}
+.tree{flex:1;overflow:auto;padding:0 10px 10px;font-family:var(--mono);font-size:12.5px}
+.tree-empty{padding:10px;color:#8BAE98;font-family:var(--body);font-size:13.5px;line-height:1.5}
+.node{display:block;width:100%;text-align:left;background:none;border:0;color:#D6E6D0;padding:3px 8px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node.file:hover{background:var(--pine-2);color:#fff}
+.node.dir{color:#9FD9B0;cursor:default}
+.node.fresh{animation:fresh 1.6s ease-out}
+@keyframes fresh{0%{background:rgba(242,169,0,.45)}100%{background:transparent}}
+.side-foot{border-top:1px solid var(--pine-2);padding:14px 20px;font-size:13px}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;cursor:pointer}
+.switch input{position:absolute;opacity:0}
+.track{width:40px;height:22px;border-radius:99px;background:var(--pine-3);position:relative;transition:background .25s;flex:none}
+.track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.switch input:checked + .track{background:var(--marigold)}
+.switch input:checked + .track::after{transform:translateX(18px)}
+.switch input:focus-visible + .track{outline:3px solid var(--marigold);outline-offset:2px}
+.credit{color:#8BAE98;font-size:12.5px}
+.credit b{color:#D6E6D0;font-weight:600}
+
+/* ---------- main ---------- */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+.bar{display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--paper);border-bottom:1px solid var(--line)}
+.bar .menu{display:none}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:99px;background:var(--mist);border:1px solid var(--line);font-size:13px;color:var(--ink-soft)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:#B3C2B8}
+.chip .dot.on{background:var(--leaf);box-shadow:0 0 0 0 rgba(46,158,91,.6);animation:ping 1.8s infinite}
+.chip .dot.busy{background:var(--marigold)}
+.chip .dot.off{background:var(--rust)}
+@keyframes ping{70%{box-shadow:0 0 0 8px rgba(46,158,91,0)}100%{box-shadow:0 0 0 0 rgba(46,158,91,0)}}
+.spacer{flex:1}
+.bar-btn{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 14px;color:var(--ink);transition:background .2s,border-color .2s}
+.bar-btn:hover:not(:disabled){background:var(--leaf-soft);border-color:var(--leaf)}
+.bar-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.scroll{flex:1;overflow:auto;padding:28px 24px 12px;scroll-behavior:smooth}
+.col{max-width:820px;margin:0 auto}
+
+/* ---------- hero ---------- */
+.hero{text-align:center;padding:5vh 0 10px}
+.hero .big-spring{width:92px;height:auto;display:block;margin:0 auto 6px;overflow:visible}
+.hero h2{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,56px);line-height:1;margin:14px 0 10px;letter-spacing:-.02em;color:var(--pine)}
+.hero p{margin:0 auto;max-width:48ch;color:var(--ink-soft);font-size:16.5px}
+.hero .byline{margin-top:14px;font-size:14px;color:var(--ink-soft)}
+.hero .byline b{color:var(--pine);font-weight:600}
+.starters{display:grid;gap:10px;margin:30px auto 0;max-width:640px;text-align:left}
+.starter{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 18px;color:var(--ink);text-align:left;transition:transform .2s,border-color .2s,box-shadow .2s}
+.starter:hover{transform:translateX(4px);border-color:var(--leaf);box-shadow:-4px 0 0 var(--leaf)}
+.starter strong{display:block;font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:2px}
+.starter span{color:var(--ink-soft);font-size:14px}
+
+/* ---------- spring logo ---------- */
+.spring{overflow:visible}
+.spring .coil{transform-box:fill-box;transform-origin:50% 100%}
+.spring.bounce .coil{animation:squash 1.05s cubic-bezier(.4,0,.3,1) infinite}
+.spring.drop{animation:drop 1.2s cubic-bezier(.3,1.5,.5,1) both}
+.spring.drop .coil{animation:squash-once 1.2s ease-out .35s both}
+.spring .leaf{transform-box:fill-box;transform-origin:0% 100%}
+.spring.bounce .leaf{animation:sway 1.05s ease-in-out infinite}
+@keyframes squash{0%,100%{transform:scaleY(1)}30%{transform:scaleY(.62)}60%{transform:scaleY(1.12)}80%{transform:scaleY(.96)}}
+@keyframes squash-once{0%{transform:scaleY(1)}35%{transform:scaleY(.55)}65%{transform:scaleY(1.1)}85%{transform:scaleY(.97)}100%{transform:scaleY(1)}}
+@keyframes sway{0%,100%{transform:rotate(0)}40%{transform:rotate(-14deg)}65%{transform:rotate(8deg)}}
+@keyframes drop{0%{transform:translateY(-70px);opacity:0}40%{opacity:1}100%{transform:translateY(0)}}
+
+/* ---------- timeline ---------- */
+.feed{position:relative;padding-left:30px}
+.feed::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:3px;border-radius:3px;background:linear-gradient(var(--line),var(--line))}
+.item{position:relative;margin-bottom:16px;animation:enter .35s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes enter{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.pin{position:absolute;left:-30px;top:12px;width:21px;height:21px;border-radius:50%;background:var(--paper);border:3px solid var(--leaf);z-index:1}
+.pin.you{border-color:var(--pine)}
+.pin.run{border-color:var(--marigold);animation:pulse 1.2s ease-in-out infinite}
+.pin.bad{border-color:var(--rust)}
+.pin.ask{border-color:var(--marigold);background:var(--marigold)}
+.pin.ok{background:var(--leaf)}
+@keyframes pulse{50%{transform:scale(1.3);box-shadow:0 0 0 7px rgba(242,169,0,.2)}}
+
+.you-msg{background:var(--pine);color:#F2F8EE;border-radius:16px 16px 16px 4px;padding:12px 18px;white-space:pre-wrap}
+.bot-msg{background:var(--paper);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:16px 20px;box-shadow:0 1px 0 var(--line)}
+.bot-msg p{margin:0 0 10px}.bot-msg p:last-child{margin:0}
+.bot-msg code,.you-msg code{font-family:var(--mono);font-size:13px;background:var(--leaf-soft);color:var(--pine);padding:1px 6px;border-radius:5px}
+.you-msg code{background:var(--pine-2);color:#CFE6D2}
+pre.block{margin:10px 0;background:var(--code);color:var(--code-ink);border-radius:12px;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.8px;line-height:1.6}
+.reveal{animation:reveal .7s ease-out both}
+@keyframes reveal{from{clip-path:inset(0 0 100% 0);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
+
+.tool{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tool-head{display:flex;align-items:center;gap:12px;width:100%;padding:11px 16px;background:none;border:0;text-align:left;color:var(--ink)}
+.tool-head:hover{background:var(--mist)}
+.tool-name{font-family:var(--display);font-weight:700;font-size:14.5px;white-space:nowrap}
+.tool-sum{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.badge{font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;white-space:nowrap}
+.badge.run{background:var(--marigold-soft);color:#7A5600}
+.badge.ok{background:var(--leaf-soft);color:#14663A}
+.badge.bad{background:var(--rust-soft);color:#8E2A15}
+.caret{transition:transform .25s;color:var(--ink-soft)}
+.open .caret{transform:rotate(90deg)}
+.tool-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.open .tool-body{grid-template-rows:1fr}
+.tool-body > div{overflow:hidden}
+.tool-body pre.block{margin:0;border-radius:0;max-height:300px;white-space:pre-wrap;word-break:break-word}
+.bar-run{height:3px;background:linear-gradient(90deg,transparent,var(--marigold),transparent);background-size:200% 100%;animation:slide 1.2s linear infinite}
+@keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+
+.think{display:flex;align-items:center;gap:14px;color:var(--ink-soft);padding:6px 0}
+.think b{font-family:var(--display);color:var(--pine);font-weight:700}
+
+.ask-card{background:var(--marigold-soft);border:2px solid var(--marigold);border-radius:16px;padding:16px 18px;animation:enter .4s cubic-bezier(.2,.9,.3,1.3) both}
+.ask-card h3{margin:0 0 8px;font-family:var(--display);font-size:17px}
+.ask-card pre.block{margin:0 0 14px;white-space:pre-wrap;word-break:break-word}
+.ask-actions{display:flex;gap:10px}
+.btn{border:0;border-radius:10px;padding:9px 20px;font-weight:600;transition:transform .15s,background .2s}
+.btn:active{transform:scale(.96)}
+.btn.go{background:var(--leaf);color:#fff}.btn.go:hover{background:#25834A}
+.btn.no{background:var(--paper);color:var(--rust);border:1px solid var(--rust)}.btn.no:hover{background:var(--rust-soft)}
+.note{font-size:13.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px}
+.err{background:var(--rust-soft);border:1px solid var(--rust);color:#7C2412;border-radius:14px;padding:12px 16px;white-space:pre-wrap;word-break:break-word}
+
+/* ---------- composer ---------- */
+.composer{padding:10px 24px 20px;background:linear-gradient(transparent,var(--mist) 28%)}
+.box{max-width:820px;margin:0 auto;background:var(--paper);border:1.5px solid var(--line);border-radius:18px;display:flex;align-items:flex-end;gap:10px;padding:10px 10px 10px 18px;transition:border-color .2s,box-shadow .2s}
+.box:focus-within{border-color:var(--leaf);box-shadow:0 0 0 4px rgba(46,158,91,.14)}
+.box textarea{flex:1;border:0;outline:0;resize:none;font:inherit;color:var(--ink);background:transparent;max-height:180px;padding:7px 0;line-height:1.5}
+.send{width:44px;height:44px;border-radius:13px;border:0;background:var(--pine);color:#fff;display:grid;place-items:center;transition:transform .2s cubic-bezier(.3,1.6,.5,1),background .2s;flex:none}
+.send:hover:not(:disabled){background:var(--leaf);transform:translateY(-3px)}
+.send:disabled{background:#B9C7BF;cursor:not-allowed}
+.send.stop{background:var(--rust)}
+.hint{max-width:820px;margin:8px auto 0;font-size:12.5px;color:var(--ink-soft);text-align:center}
+
+/* ---------- file drawer ---------- */
+.scrim{position:absolute;inset:0;background:rgba(16,40,31,.35);animation:fade .25s both;z-index:5}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(640px,94%);background:var(--code);color:var(--code-ink);z-index:6;display:flex;flex-direction:column;animation:slidein .35s cubic-bezier(.2,.9,.3,1) both;box-shadow:-20px 0 40px rgba(0,0,0,.25)}
+.drawer header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--pine-2)}
+.drawer header span{font-family:var(--mono);font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer pre{margin:0;padding:18px 20px;overflow:auto;flex:1;font-family:var(--mono);font-size:12.8px;line-height:1.65;tab-size:4}
+@keyframes slidein{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.offline{background:var(--rust);color:#fff;text-align:center;padding:6px;font-size:13.5px}
+
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;inset:0 auto 0 0;width:292px;z-index:20;transform:translateX(-100%);transition:transform .3s}
+  .side.show{transform:none;box-shadow:12px 0 30px rgba(0,0,0,.3)}
+  .bar .menu{display:inline-block}
+  .scroll,.composer,.bar{padding-left:14px;padding-right:14px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const call = (path, opts = {}) =>
+  fetch(path, { ...opts, headers: { 'X-Agent': '1', 'Content-Type': 'application/json' } }).then(r => r.json());
+const post = (path, body = {}) => call(path, { method: 'POST', body: JSON.stringify(body) });
+
+const STARTERS = [
+  ['Build a student API', 'Create a Spring Boot project called student-api with a Student entity (name, age, email), build it, run it and test it.'],
+  ['Add a new entity', 'Add a Product entity with name:String, price:Double, active:Boolean to my existing project, then build it.'],
+  ['Explain my project', 'List the files in the workspace and explain how the project is structured.'],
+];
+
+/* ---------- logo: leaf on a coil spring ---------- */
+function Spring({ size = 34, mode = '' , light = true }) {
+  return (
+    <svg className={'spring ' + mode} width={size} height={size * 64 / 44} viewBox="0 0 44 64" aria-hidden="true">
+      <g className="coil">
+        <path d="M22 12V16L10 22L34 30L10 38L34 46L10 54L22 58V62" fill="none"
+          stroke={light ? '#E6F3E0' : '#10281F'} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+      </g>
+      <path className="leaf" d="M22 12C22 2 34 0 40 4C38 14 28 16 22 12Z" fill="#2E9E5B" />
+    </svg>
+  );
+}
+
+/* ---------- tiny markdown: ``` blocks and `inline` ---------- */
+function Rich({ text }) {
+  const parts = text.split(/```(?:\w+)?\n?([\s\S]*?)```/g);
+  return parts.map((p, i) => i % 2 ? <pre className="block" key={i}>{p.trim()}</pre> :
+    p.trim() ? p.trim().split(/\n{2,}/).map((para, j) => (
+      <p key={i + '-' + j}>{para.split(/(`[^`]+`)/g).map((s, k) =>
+        s.startsWith('`') && s.endsWith('`') && s.length > 1 ? <code key={k}>{s.slice(1, -1)}</code> : s)}</p>
+    )) : null);
+}
+
+function summary(name, args) {
+  if (!args) return '';
+  const first = args.command || args.path || args.project || args.name || args.directory || '';
+  if (name === 'generate_crud') return `${args.project} · ${args.entity} (${args.fields})`;
+  if (name === 'create_spring_boot_project') return `${args.name} [${args.dependencies || 'web,data-jpa,h2'}]`;
+  return String(first);
+}
+
+function ToolCard({ call, result }) {
+  const [open, setOpen] = useState(false);
+  const failed = result && /^(ERROR|DENIED)/.test(result.result) ;
+  const status = !result ? 'run' : failed ? 'bad' : 'ok';
+  const label = { run: 'Running', ok: 'Done', bad: result && result.result.startsWith('DENIED') ? 'Denied' : 'Failed' }[status];
+  return (
+    <div className="item">
+      <span className={'pin ' + status} />
+      <div className={'tool' + (open ? ' open' : '')}>
+        <button className="tool-head" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+          <span className="caret">▸</span>
+          <span className="tool-name">{call.name.replace(/_/g, ' ')}</span>
+          <span className="tool-sum">{summary(call.name, call.args)}</span>
+          <span className={'badge ' + status}>{label}</span>
+        </button>
+        {!result && <div className="bar-run" />}
+        <div className="tool-body"><div>
+          <pre className="block">{result ? result.result : 'Waiting for the tool to finish…'}</pre>
+        </div></div>
+      </div>
+    </div>
+  );
+}
+
+function Approval({ ev, live, outcome, onAnswer }) {
+  if (live) return (
+    <div className="item">
+      <span className="pin ask" />
+      <div className="ask-card" role="alertdialog" aria-label="Approval needed">
+        <h3>The agent needs your approval</h3>
+        <pre className="block">{ev.what}</pre>
+        <div className="ask-actions">
+          <button className="btn go" autoFocus onClick={() => onAnswer(true)}>Allow</button>
+          <button className="btn no" onClick={() => onAnswer(false)}>Deny</button>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div className="item">
+      <span className={'pin ' + (outcome ? 'ok' : 'bad')} />
+      <div className="note"><code>{ev.what.length > 70 ? ev.what.slice(0, 70) + '…' : ev.what}</code> {outcome ? 'allowed' : 'not allowed'}</div>
+    </div>
+  );
+}
+
+function FileTree({ files, fresh, onOpen }) {
+  if (!files.length) return <div className="tree-empty">No files yet. Ask the agent to create a project and it will appear here.</div>;
+  return (
+    <div className="tree">
+      {files.map(f => {
+        const depth = f.path.split('/').length - 1;
+        const name = f.path.split('/').pop();
+        return f.dir
+          ? <span key={f.path} className="node dir" style={{ paddingLeft: 8 + depth * 14 }}>{name}/</span>
+          : <button key={f.path} title={f.path} className={'node file' + (fresh.has(f.path) ? ' fresh' : '')}
+              style={{ paddingLeft: 8 + depth * 14 }} onClick={() => onOpen(f.path)}>{name}</button>;
+      })}
+    </div>
+  );
+}
+
+function App() {
+  const [events, setEvents] = useState([]);
+  const [st, setSt] = useState({ busy: false, approvalId: -1, autoApprove: false, model: '…', serverRunning: false });
+  const [offline, setOffline] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [fresh, setFresh] = useState(new Set());
+  const [viewer, setViewer] = useState(null);
+  const [text, setText] = useState('');
+  const [menu, setMenu] = useState(false);
+  const lastId = useRef(0);
+  const known = useRef(new Set());
+  const scroller = useRef(null);
+  const stick = useRef(true);
+
+  const loadFiles = useCallback(async () => {
+    try {
+      const list = await call('/api/files');
+      const now = new Set(list.filter(f => !f.dir).map(f => f.path));
+      const added = new Set([...now].filter(p => known.current.size && !known.current.has(p)));
+      known.current = now;
+      setFiles(list);
+      if (added.size) { setFresh(added); setTimeout(() => setFresh(new Set()), 1800); }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    loadFiles();
+    const tick = async () => {
+      try {
+        const d = await call('/api/events?after=' + lastId.current);
+        if (!alive) return;
+        setOffline(false); setSt(d.state);
+        if (d.events.length) {
+          lastId.current = d.events[d.events.length - 1].id;
+          const types = d.events.map(e => e.type);
+          const r = types.lastIndexOf('reset');
+          setEvents(prev => r >= 0 ? d.events.slice(r + 1) : [...prev, ...d.events]);
+          if (types.includes('tool_result') || types.includes('done')) loadFiles();
+        }
+      } catch (e) { if (alive) setOffline(true); }
+      if (alive) setTimeout(tick, 600);
+    };
+    tick();
+    return () => { alive = false; };
+  }, [loadFiles]);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
+  }, [events, st.approvalId]);
+
+  const onScroll = e => {
+    const el = e.target;
+    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
+
+  const send = async (msg) => {
+    const t = (msg ?? text).trim();
+    if (!t || st.busy) return;
+    setText(''); stick.current = true;
+    const r = await post('/api/task', { task: t });
+    if (r.error) alert(r.error);
+    else setSt(r);
+  };
+  const answer = allow => post('/api/approve', { allow });
+  const openFile = async p => { setViewer({ path: p, content: 'Loading…' }); setViewer(await call('/api/file?path=' + encodeURIComponent(p))); };
+
+  // build the feed
+  const results = {}, outcomes = {};
+  events.forEach(e => { if (e.type === 'tool_result') results[e.for] = e; if (e.type === 'approval_result') outcomes[e.for] = e.allow; });
+  const last = events[events.length - 1];
+  const thinking = st.busy && st.approvalId < 0 && last && (last.type === 'thinking' || last.type === 'user' || last.type === 'tool_result' || last.type === 'approval_result');
+  const lastAssistant = [...events].reverse().find(e => e.type === 'assistant');
+  const empty = events.length === 0;
+
+  const feed = events.map(e => {
+    switch (e.type) {
+      case 'user': return <div className="item" key={e.id}><span className="pin you" /><div className="you-msg"><Rich text={e.text} /></div></div>;
+      case 'assistant': return <div className="item" key={e.id}><span className="pin ok" /><div className={'bot-msg' + (lastAssistant === e && !st.busy ? ' reveal' : '')}><Rich text={e.text} /></div></div>;
+      case 'tool_call': return <ToolCard key={e.id} call={e} result={results[e.id]} />;
+      case 'approval': return <Approval key={e.id} ev={e} live={st.approvalId === e.id} outcome={outcomes[e.id]} onAnswer={answer} />;
+      case 'error': return <div className="item" key={e.id}><span className="pin bad" /><div className="err"><b>Something went wrong.</b>{'\n'}{e.text}{'\n\n'}Check that Ollama is running and the model supports tools, then send your message again.</div></div>;
+      default: return null;
+    }
+  });
+
+  return (
+    <div className="app">
+      <aside className={'side' + (menu ? ' show' : '')}>
+        <div className="brand">
+          <Spring size={34} mode={st.busy ? 'bounce' : ''} />
+          <div><h1>SpringBoot Agent</h1><small>by Vetrivel Balakrishnan</small></div>
+        </div>
+        <div className="side-head"><h2>Project files</h2><button className="icon-btn" onClick={loadFiles}>Refresh</button></div>
+        <FileTree files={files} fresh={fresh} onOpen={p => { setMenu(false); openFile(p); }} />
+        <div className="side-foot">
+          <label className="switch">
+            <span>Run commands without asking</span>
+            <input type="checkbox" checked={!!st.autoApprove} onChange={e => post('/api/settings', { autoApprove: e.target.checked }).then(setSt)} />
+            <span className="track" />
+          </label>
+          <div className="credit">Built by <b>Vetrivel Balakrishnan</b><br />Runs locally with Ollama. No API key.</div>
+        </div>
+      </aside>
+
+      <main className="main">
+        {offline && <div className="offline">Lost connection to the agent. Restart SpringBootAgent.java and reload this page.</div>}
+        <div className="bar">
+          <button className="bar-btn menu" onClick={() => setMenu(m => !m)}>Files</button>
+          <span className="chip"><span className={'dot ' + (offline ? 'off' : st.busy ? 'busy' : 'on')} />{offline ? 'Offline' : st.busy ? 'Working' : 'Ready'} · {st.model}</span>
+          {st.serverRunning && <span className="chip"><span className="dot on" />App running on :8080</span>}
+          <span className="spacer" />
+          <button className="bar-btn" disabled={st.busy || empty} onClick={() => post('/api/reset').then(setSt)}>New chat</button>
+        </div>
+
+        <div className="scroll" ref={scroller} onScroll={onScroll}>
+          <div className="col">
+            {empty ? (
+              <div className="hero">
+                <Spring size={92} mode="drop" light={false} />
+                <h2>SpringBoot Agent</h2>
+                <p>Describe the Spring Boot API you want. I create the project, write the code, build it and test it.</p>
+                <div className="byline">Built by <b>Vetrivel Balakrishnan</b></div>
+                <div className="starters">
+                  {STARTERS.map(([title, prompt]) => (
+                    <button className="starter" key={title} onClick={() => send(prompt)}>
+                      <strong>{title}</strong><span>{prompt}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="feed">
+                {feed}
+                {thinking && (
+                  <div className="item"><span className="pin run" />
+                    <div className="think"><Spring size={22} mode="bounce" light={false} /><span><b>Thinking</b> through the next step…</span></div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="composer">
+          <div className="box">
+            <textarea rows={1} value={text} placeholder="Describe what to build, e.g. an Employee API with name, salary and department"
+              onChange={e => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
+            {st.busy
+              ? <button className="send stop" aria-label="Stop the agent" onClick={() => post('/api/cancel')}>■</button>
+              : <button className="send" aria-label="Send" disabled={!text.trim()} onClick={() => send()}>➤</button>}
+          </div>
+          <div className="hint">Enter to send · Shift+Enter for a new line</div>
+        </div>
+
+        {viewer && <>
+          <div className="scrim" onClick={() => setViewer(null)} />
+          <div className="drawer">
+            <header><span>{viewer.path}</span><button className="icon-btn" onClick={() => setViewer(null)}>Close</button></header>
+            <pre>{viewer.content}</pre>
+          </div>
+        </>}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
